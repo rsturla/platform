@@ -1,0 +1,17 @@
+set export
+
+BINARY_NAME := "platform-cli"
+
+build:
+  mkdir -p ./bin
+  go build -o ./bin/$BINARY_NAME -v ./cmd/$BINARY_NAME
+
+run:
+   go run ./cmd/$BINARY_NAME
+
+deps:
+  go mod tidy
+  go mod download
+
+install:
+  go install ./cmd/$BINARY_NAME

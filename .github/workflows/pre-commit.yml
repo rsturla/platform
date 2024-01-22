@@ -1,0 +1,29 @@
+name: Pre-Commit CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4
+
+      - name: Setup Python
+        uses: actions/setup-python@0a5c61591373683505ea898e09a3ea4f39ef2b9c # v5
+
+      - name: Run pre-commit
+        uses: pre-commit/action@646c83fcd040023954eafda54b4db0192ce70507 # v3.0.0
+        with:
+          extra_args: --all-files
+
+      - name: Check for changed files
+        run: |
+          if [[ -n "$(git status --porcelain)" ]]; then
+            echo "pre-commit changed files, please run pre-commit locally and commit the changes"
+            exit 1
+          fi

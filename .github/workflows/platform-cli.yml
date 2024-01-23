@@ -32,10 +32,11 @@ jobs:
             ${{ env.WORKING_DIR }}/go.sum
 
       - name: Build
+        working-directory: ${{ env.WORKING_DIR }}
         run: go build -o ./bin/platform-cli ./cmd/platform-cli
 
       - name: Upload artifact
         uses: actions/upload-artifact@v2
         with:
           name: platform-cli
-          path: ./bin/platform-cli
+          path: ${{ env.WORKING_DIR }}/bin/platform-cli

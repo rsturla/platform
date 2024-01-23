@@ -19,6 +19,10 @@ jobs:
     runs-on: ubuntu-latest
     env:
       WORKING_DIR: ${{ github.workspace }}/tools/platform-cli
+    defaults:
+      run:
+        shell: bash
+        working-directory: ${{ env.WORKING_DIR }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -31,8 +35,10 @@ jobs:
             ${{ env.WORKING_DIR }}/go.mod
             ${{ env.WORKING_DIR }}/go.sum
 
+      - name: Test
+        run: go test -v ./...
+
       - name: Build
-        working-directory: ${{ env.WORKING_DIR }}
         run: go build -o ./bin/platform-cli ./cmd/platform-cli
 
       - name: Upload artifact

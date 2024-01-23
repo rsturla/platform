@@ -1,0 +1,48 @@
+name: Platform CLI CI
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'tools/platform-cli/**'
+      - '.github/workflows/platform-cli.yml'
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'tools/platform-cli/**'
+      - '.github/workflows/platform-cli.yml'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    env:
+      WORKING_DIR: ${{ github.workspace }}/tools/platform-cli
+    defaults:
+      run:
+        shell: bash
+        working-directory: ${{ env.WORKING_DIR }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v4
+        with:
+          go-version-file: ${{ env.WORKING_DIR }}/go.mod
+          cache-dependency-path: |
+            ${{ env.WORKING_DIR }}/go.mod
+            ${{ env.WORKING_DIR }}/go.sum
+
+      - name: Test
+        run: go test -v ./...
+
+      - name: Build
+        run: go build -o ./bin/platform-cli ./cmd/platform-cli
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: platform-cli
+          path: ${{ env.WORKING_DIR }}/bin/platform-cli

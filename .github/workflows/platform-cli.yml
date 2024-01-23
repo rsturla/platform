@@ -36,7 +36,7 @@ jobs:
         run: go build -o ./bin/platform-cli ./cmd/platform-cli
 
       - name: Upload artifact
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v4
         with:
           name: platform-cli
           path: ${{ env.WORKING_DIR }}/bin/platform-cli

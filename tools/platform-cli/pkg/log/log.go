@@ -5,6 +5,7 @@ import "github.com/sirupsen/logrus"
 func ConfigureLogger(logLevel string) error {
 	level, err := logrus.ParseLevel(logLevel)
 	if err != nil {
+		logrus.SetLevel(logrus.InfoLevel)
 		return err
 	}
 	logrus.SetLevel(level)

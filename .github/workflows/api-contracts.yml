@@ -26,9 +26,12 @@ jobs:
 
       - name: Lint
         uses: bufbuild/buf-lint-action@v1
+        with:
+          input: contracts/protos
 
       - name: Breaking
         uses: bufbuild/buf-breaking-action@v1
         if: github.event_name == 'pull_request'
         with:
           against: main
+          input: contracts/protos

@@ -1,4 +1,3 @@
-// my-service/test.proto
 syntax = "proto3";
 
 package test.v1;

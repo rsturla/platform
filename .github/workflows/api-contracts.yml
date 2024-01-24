@@ -33,5 +33,5 @@ jobs:
         uses: bufbuild/buf-breaking-action@v1
         if: github.event_name == 'pull_request'
         with:
-          against: main
+          against: 'https://github.com/${GITHUB_REPOSITORY}.git#branch=main,ref=HEAD~1,subdir=contracts/protos'
           input: contracts/protos

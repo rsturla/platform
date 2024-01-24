@@ -1,0 +1,15 @@
+---
+version: v1
+managed:
+  enabled: true
+  go_package_prefix:
+    default: github.com/rsturla/platform/libs/grpc-collections/go
+plugins:
+  - plugin: buf.build/protocolbuffers/go:v1.32.0
+    out: ./go/pkg
+    opt:
+      - paths=source_relative
+  - plugin: buf.build/protocolbuffers/python:v21.9
+    out: ./python/gen
+  - plugin: buf.build/bufbuild/es:v1.6.0
+    out: ./node/gen

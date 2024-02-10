@@ -3,14 +3,20 @@ package main
 import (
 	"context"
 	"fmt"
+	"log"
+	"net"
+	"strings"
+
 	commonv1 "github.com/rsturla/platform-contracts/gen/go/common/v1"
 	greeterv1 "github.com/rsturla/platform-contracts/gen/go/greeter/v1"
 	"google.golang.org/grpc"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/reflect/protoreflect"
 	"google.golang.org/protobuf/reflect/protoregistry"
-	"net"
-	"strings"
+)
+
+const (
+	serverPort = ":8080"
 )
 
 type greeterService struct {
@@ -18,36 +24,47 @@ type greeterService struct {
 }
 
 func main() {
-	listener, err := net.Listen("tcp", ":8080")
+	listener, err := net.Listen("tcp", serverPort)
 	if err != nil {
-		panic(err)
+		log.Fatalf("Failed to listen: %v", err)
 	}
+
 	greeterService := &greeterService{}
+	server := grpc.NewServer()
+	greeterv1.RegisterGreeterServiceServer(server, greeterService)
 
-	s := grpc.NewServer()
-	greeterv1.RegisterGreeterServiceServer(s, greeterService)
-
-	if err := s.Serve(listener); err != nil {
-		panic(err)
+	log.Printf("Server listening on port %s\n", serverPort)
+	if err := server.Serve(listener); err != nil {
+		log.Fatalf("Failed to serve: %v", err)
 	}
 }
 
 func (s *greeterService) SayHello(ctx context.Context, req *greeterv1.SayHelloRequest) (*greeterv1.SayHelloResponse, error) {
-	methodName, err := getMethodName(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	desc, err := getDescriptorByName(methodName)
-	methodDesc := desc.(protoreflect.MethodDescriptor)
-
-	if humansWhoCanRpc, ok := getMethodExtension(methodDesc, commonv1.E_HumansWhoCanRpc); ok {
-		fmt.Println("Humans who can RPC:", humansWhoCanRpc)
-	}
+	handleExtensions(ctx)
 
 	return &greeterv1.SayHelloResponse{
 		Message: fmt.Sprintf("Hello %s", req.Name),
 	}, nil
+}
+
+func handleExtensions(ctx context.Context) {
+	methodName, err := getMethodName(ctx)
+	if err != nil {
+		log.Printf("Failed to get method name: %v", err)
+		return
+	}
+
+	desc, err := getDescriptorByName(methodName)
+	if err != nil {
+		log.Printf("Failed to get descriptor by name: %v", err)
+		return
+	}
+
+	methodDesc := desc.(protoreflect.MethodDescriptor)
+
+	if humansWhoCanRpc, ok := getMethodExtension(methodDesc, commonv1.E_HumansWhoCanRpc); ok {
+		log.Printf("Humans who can RPC: %v\n", humansWhoCanRpc)
+	}
 }
 
 func getMethodName(ctx context.Context) (string, error) {
@@ -65,19 +82,6 @@ func getMethodExtension(desc protoreflect.MethodDescriptor, extensionType protor
 	}
 	x := proto.GetExtension(opts, extensionType)
 	return x, true
-}
-
-func getMethodExtensionByName(methodName string, extensionName string) (interface{}, bool) {
-	desc, err := getDescriptorByName(methodName)
-	if err != nil {
-		return nil, false
-	}
-	methodDesc := desc.(protoreflect.MethodDescriptor)
-	extensionType, err := getDescriptorByName(extensionName)
-	if err != nil {
-		return nil, false
-	}
-	return getMethodExtension(methodDesc, extensionType.(protoreflect.ExtensionType))
 }
 
 func getDescriptorByName(name string) (protoreflect.Descriptor, error) {

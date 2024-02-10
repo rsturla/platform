@@ -10,6 +10,7 @@ import (
 	"google.golang.org/protobuf/reflect/protoreflect"
 	"google.golang.org/protobuf/reflect/protoregistry"
 	"net"
+	"strings"
 )
 
 type greeterService struct {
@@ -32,7 +33,9 @@ func main() {
 }
 
 func (s *greeterService) SayHello(ctx context.Context, req *greeterv1.SayHelloRequest) (*greeterv1.SayHelloResponse, error) {
-	methodName := protoreflect.FullName("greeter.v1.GreeterService.SayHello")
+	procedure, _ := grpc.Method(ctx)
+	methodName := protoreflect.FullName(strings.ReplaceAll(strings.Trim(procedure, "/"), "/", "."))
+
 	desc, err := protoregistry.GlobalFiles.FindDescriptorByName(methodName)
 	if err != nil {
 		return nil, err

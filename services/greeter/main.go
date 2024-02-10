@@ -33,17 +33,15 @@ func main() {
 }
 
 func (s *greeterService) SayHello(ctx context.Context, req *greeterv1.SayHelloRequest) (*greeterv1.SayHelloResponse, error) {
-	procedure, _ := grpc.Method(ctx)
-	methodName := protoreflect.FullName(strings.ReplaceAll(strings.Trim(procedure, "/"), "/", "."))
-
-	desc, err := protoregistry.GlobalFiles.FindDescriptorByName(methodName)
+	methodName, err := getMethodName(ctx)
 	if err != nil {
 		return nil, err
 	}
+
+	desc, err := getDescriptorByName(methodName)
 	methodDesc := desc.(protoreflect.MethodDescriptor)
 
-	if humansWhoCanRpc, ok := getHumansWhoCanRpcExtension(methodDesc); ok {
-		// Use humansWhoCanRpc as needed
+	if humansWhoCanRpc, ok := getMethodExtension(methodDesc, commonv1.E_HumansWhoCanRpc); ok {
 		fmt.Println("Humans who can RPC:", humansWhoCanRpc)
 	}
 
@@ -52,11 +50,40 @@ func (s *greeterService) SayHello(ctx context.Context, req *greeterv1.SayHelloRe
 	}, nil
 }
 
-func getHumansWhoCanRpcExtension(desc protoreflect.MethodDescriptor) (commonv1.HumansWhoCanRpc, bool) {
-	opts := desc.Options()
-	if !proto.HasExtension(opts, commonv1.E_HumansWhoCanRpc) {
-		return commonv1.HumansWhoCanRpc_HUMANS_WHO_CAN_RPC_UNSPECIFIED, false
+func getMethodName(ctx context.Context) (string, error) {
+	procedure, ok := grpc.Method(ctx)
+	if !ok {
+		return "", fmt.Errorf("could not get method from context")
 	}
-	x := proto.GetExtension(opts, commonv1.E_HumansWhoCanRpc)
-	return x.(commonv1.HumansWhoCanRpc), true
+	return strings.ReplaceAll(strings.Trim(procedure, "/"), "/", "."), nil
+}
+
+func getMethodExtension(desc protoreflect.MethodDescriptor, extensionType protoreflect.ExtensionType) (interface{}, bool) {
+	opts := desc.Options()
+	if !proto.HasExtension(opts, extensionType) {
+		return nil, false
+	}
+	x := proto.GetExtension(opts, extensionType)
+	return x, true
+}
+
+func getMethodExtensionByName(methodName string, extensionName string) (interface{}, bool) {
+	desc, err := getDescriptorByName(methodName)
+	if err != nil {
+		return nil, false
+	}
+	methodDesc := desc.(protoreflect.MethodDescriptor)
+	extensionType, err := getDescriptorByName(extensionName)
+	if err != nil {
+		return nil, false
+	}
+	return getMethodExtension(methodDesc, extensionType.(protoreflect.ExtensionType))
+}
+
+func getDescriptorByName(name string) (protoreflect.Descriptor, error) {
+	desc, err := protoregistry.GlobalFiles.FindDescriptorByName(protoreflect.FullName(name))
+	if err != nil {
+		return nil, err
+	}
+	return desc, nil
 }

@@ -3,14 +3,14 @@ package main
 import (
 	"context"
 	"fmt"
+	"google.golang.org/grpc/reflection"
+	"google.golang.org/protobuf/proto"
 	"log"
 	"net"
 	"strings"
 
-	commonv1 "github.com/rsturla/platform-contracts/gen/go/common/v1"
 	greeterv1 "github.com/rsturla/platform-contracts/gen/go/greeter/v1"
 	"google.golang.org/grpc"
-	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/reflect/protoreflect"
 	"google.golang.org/protobuf/reflect/protoregistry"
 )
@@ -32,6 +32,9 @@ func main() {
 	greeterService := &greeterService{}
 	server := grpc.NewServer()
 	greeterv1.RegisterGreeterServiceServer(server, greeterService)
+
+	// Add reflection to the server
+	reflection.Register(server)
 
 	log.Printf("Server listening on port %s\n", serverPort)
 	if err := server.Serve(listener); err != nil {
@@ -61,10 +64,28 @@ func handleExtensions(ctx context.Context) {
 	}
 
 	methodDesc := desc.(protoreflect.MethodDescriptor)
-
-	if humansWhoCanRpc, ok := getMethodExtension(methodDesc, commonv1.E_HumansWhoCanRpc); ok {
-		log.Printf("Humans who can RPC: %v\n", humansWhoCanRpc)
+	humansWhoCanRpcFullName := protoreflect.FullName("common.v1.humans_who_can_rpc")
+	humansWhoCanRpcDesc, err := protoregistry.GlobalFiles.FindDescriptorByName(humansWhoCanRpcFullName)
+	if err != nil {
+		log.Printf("Failed to get descriptor by name: %v", err)
+		return
 	}
+
+	// Convert the descriptor to ExtensionType
+	extensionType, ok := humansWhoCanRpcDesc.(protoreflect.ExtensionType)
+	if !ok {
+		// THIS IS ALWAYS HIT!
+		log.Printf("Failed to convert descriptor to ExtensionType. Descriptor: %v", humansWhoCanRpcDesc)
+		return
+	}
+
+	humansWhoCanRpc, ok := getMethodExtensionValue(methodDesc, extensionType)
+	if !ok {
+		log.Printf("Failed to get method extension")
+		return
+	}
+
+	fmt.Println("humansWhoCanRpc: ", humansWhoCanRpc)
 }
 
 func getMethodName(ctx context.Context) (string, error) {
@@ -75,13 +96,18 @@ func getMethodName(ctx context.Context) (string, error) {
 	return strings.ReplaceAll(strings.Trim(procedure, "/"), "/", "."), nil
 }
 
-func getMethodExtension(desc protoreflect.MethodDescriptor, extensionType protoreflect.ExtensionType) (interface{}, bool) {
+func getMethodExtensionValue(desc protoreflect.MethodDescriptor, extension protoreflect.ExtensionType) (interface{}, bool) {
 	opts := desc.Options()
-	if !proto.HasExtension(opts, extensionType) {
+	if opts == nil {
 		return nil, false
 	}
-	x := proto.GetExtension(opts, extensionType)
-	return x, true
+
+	extensionField := proto.GetExtension(opts, extension)
+	if extensionField == nil {
+		return nil, false
+	}
+
+	return extensionField, true
 }
 
 func getDescriptorByName(name string) (protoreflect.Descriptor, error) {

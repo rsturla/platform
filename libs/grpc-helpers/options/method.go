@@ -8,7 +8,6 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/reflect/protoreflect"
-	"google.golang.org/protobuf/reflect/protoregistry"
 )
 
 // GetMethodValue retrieves the value of a specified extension for a given method.
@@ -18,12 +17,12 @@ func GetMethodValue(ctx context.Context, extension protoreflect.ExtensionType) (
 		return nil, fmt.Errorf("failed to get method name: %v", err)
 	}
 
-	methodDescriptor, err := getMethodDescriptorByName(methodName)
+	descriptor, err := getDescriptorByName(methodName)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get method descriptor by name: %v", err)
 	}
 
-	value, ok := getMethodExtensionValue(methodDescriptor.(protoreflect.MethodDescriptor), extension)
+	value, ok := getMethodExtensionValue(descriptor.(protoreflect.MethodDescriptor), extension)
 	if !ok {
 		return nil, fmt.Errorf("failed to get method extension value")
 	}
@@ -41,7 +40,7 @@ func getMethodName(ctx context.Context) (string, error) {
 }
 
 // getExtensionValue retrieves the value of the specified extension for a method.
-func getMethodExtensionValue(desc protoreflect.MethodDescriptor, extension protoreflect.ExtensionType) (interface{}, bool) {
+func getMethodExtensionValue(desc protoreflect.Descriptor, extension protoreflect.ExtensionType) (interface{}, bool) {
 	opts := desc.Options()
 	if opts == nil {
 		return nil, false
@@ -53,13 +52,4 @@ func getMethodExtensionValue(desc protoreflect.MethodDescriptor, extension proto
 	}
 
 	return extensionField, true
-}
-
-// getDescriptorByName retrieves the descriptor for a given method name.
-func getMethodDescriptorByName(name string) (protoreflect.Descriptor, error) {
-	desc, err := protoregistry.GlobalFiles.FindDescriptorByName(protoreflect.FullName(name))
-	if err != nil {
-		return nil, fmt.Errorf("failed to find descriptor by name: %v", err)
-	}
-	return desc, nil
 }
